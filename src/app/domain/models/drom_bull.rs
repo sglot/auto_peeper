@@ -1,5 +1,5 @@
 // машина на дроме
-
+// TODO переименовать
 #[derive(Default, Debug)]
 pub struct DromBull {
     pub id: u64,
@@ -16,6 +16,10 @@ pub struct DromBull {
     pub probeg: u32,
     pub price: u32,
     pub location: String,
+
+    pub system: String,
+    pub exclusive: bool,
+
     pub date: String,
     pub created_at: String,
 }
@@ -37,6 +41,10 @@ impl DromBull {
             probeg: 0,
             price: 0,
             location: "".to_string(),
+
+            system: "".to_string(),
+            exclusive: false,
+
             date: "".to_string(),
             created_at : "".to_string(),
         }

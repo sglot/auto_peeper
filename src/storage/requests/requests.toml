@@ -1,4 +1,69 @@
 [[requests]]
 id = 1
-firm = 
-model = 
+firm = "bmw"
+model = "3-series"
+avito_model_hash = "ASgBAgICAkTgtg3klyjitg32myg"
+avito_filter_hash = "ASgBAgECAkTgtg3klyjitg32mygBRfqMFBd7ImZyb20iOjIwMTAsInRvIjpudWxsfQ"
+
+[[requests]]
+id = 2
+firm = "toyota"
+model = "corolla"
+avito_model_hash = "ASgBAgICAkTgtg20mSjitg2woig"
+avito_filter_hash = "ASgBAgECAkTgtg20mSjitg2woigBRfqMFBd7ImZyb20iOjIwMTgsInRvIjpudWxsfQ"
+
+[[requests]]
+id = 3
+firm = "kia"
+model = "optima"
+avito_model_hash = ""
+avito_filter_hash = ""
+
+[[requests]]
+id = 4
+firm = "skoda"
+model = "octavia"
+avito_model_hash = ""
+avito_filter_hash = ""
+
+[[requests]]
+id = 5
+firm = "kia"
+model = "cerato"
+avito_model_hash = "ASgBAgICAkTgtg3KmCjitg2qoSg"
+avito_filter_hash = "ASgBAgECA0Tgtg3KmCjitg2qoSj68A_ou_cCAUX6jBQXeyJmcm9tIjoyMDE3LCJ0byI6bnVsbH0"
+
+[[requests]]
+id = 6
+firm = "nissan"
+model = "qashqai"
+avito_model_hash = "ASgBAgICAkTgtg36mCjitg3arSg"
+avito_filter_hash = "ASgBAgECA0Tgtg36mCjitg3arSj68A_ou_cCAkW~FRh7ImZyb20iOm51bGwsInRvIjoxNTUyNH36jBQXeyJmcm9tIjoyMDA4LCJ0byI6MjAxMH0"
+
+[[requests]]
+id = 7
+firm = "lada"
+model = "granta"
+avito_model_hash = ""
+avito_filter_hash = ""
+
+[[requests]]
+id = 8
+firm = "lada"
+model = "vesta"
+avito_model_hash = ""
+avito_filter_hash = ""
+
+[[requests]]
+id = 9
+firm = "bmw"
+model = "x3"
+avito_model_hash = ""
+avito_filter_hash = ""
+
+[[requests]]
+id = 10
+firm = "kia"
+model = "k5"
+avito_model_hash = "ASgBAgICAkTgtg3KmCjitg26qCg"
+avito_filter_hash = "ASgBAgECA0Tgtg3KmCjitg26qCj68A_ou_cCAUX6jBQXeyJmcm9tIjoyMDE3LCJ0byI6bnVsbH0"

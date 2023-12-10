@@ -45,14 +45,16 @@
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone)]
 pub struct UserRequestBundle {
     pub requests: Vec<UserRequest>
 }
 
-#[derive(Serialize, Deserialize, Default, Debug)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone)]
 pub struct UserRequest {
     pub id: u32,
     pub firm: String,
     pub model: String,
+    pub avito_model_hash: String,
+    pub avito_filter_hash: String,
 }

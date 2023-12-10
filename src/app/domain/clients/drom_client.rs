@@ -2,7 +2,7 @@ use log::info;
 
 use super::PeeperClient;
 use crate::app::domain::models::{
-    drom_bull::DromBull, drom_bull_repository::DromBullRepository, user_request::UserRequest,
+    drom_bull::DromBull, drom_bull_repository::DromBullRepository, user_request::UserRequest, progress::Progress, progress_repository::ProgressRepository, context_repository::ContextRepository,
 };
 use async_trait::async_trait;
 
@@ -10,12 +10,14 @@ use scraper::{ElementRef, Html, Selector};
 
 pub struct DromClient {
     pub base_uri: String,
+    pub system_type: String,
 }
 
 impl DromClient {
     pub fn new() -> Self {
         Self {
             base_uri: std::env::var("DROM_BASE_URI").expect("DROM_BASE_URI must be set"),
+            system_type: "drom".to_string(),
         }
     }
 
@@ -41,12 +43,21 @@ impl DromClient {
     pub async fn async_search(
         &mut self,
         request: &UserRequest,
+        start_page: &u32
     ) -> Result<(), Box<dyn std::error::Error>> {
-        info!("Начало загрузки {:?} {:?}", &request.firm, &request.model);
+        info!("[drom] Начало загрузки {:?} {:?}", &request.firm, &request.model);
         let mut next_page = true;
-        let mut current_page = 1;
+        let mut current_page = *start_page;
+
+        let mut progress = Progress::new();
+        progress.request_id = request.id;
+        progress.system = "drom".to_string();
+        
 
         while next_page {
+            current_page += 1;
+            progress.page = current_page;
+
             next_page = false;
 
             let url_p = self.get_url(request, current_page);
@@ -72,13 +83,12 @@ impl DromClient {
                 // следующая страница
                 if bull_data.eq("component_pagination-item-next") {
                     next_page = true;
-                    current_page += 1;
 
                     if !std::env::var("PRODUCTION")
                         .unwrap_or("false".to_string())
                         .eq("true")
                     {
-                        if current_page > 3 {
+                        if current_page > 4 {
                             next_page = false;
                         }
                     }
@@ -89,6 +99,8 @@ impl DromClient {
                 }
 
                 let mut drom_bull = DromBull::new();
+                
+                drom_bull.system = self.system_type.clone();
 
                 let href = candidate.attr("href").unwrap();
                 let href_vec: Vec<&str> = href.split("/").collect();
@@ -96,7 +108,7 @@ impl DromClient {
 
                 drom_bull.external_id = href_end[0].to_string();
 
-                // название, моедель, год
+                // название, модель, год
                 let title_selector = Selector::parse("span").unwrap();
                 let title_candidates = candidate.select(&title_selector);
 
@@ -121,7 +133,7 @@ impl DromClient {
                     print!(" 1{:?} 2{:?} 3{:?}", firm, model, year);
 
                     drom_bull.firm = firm.to_string();
-                    drom_bull.model = model.to_string();
+                    drom_bull.model = request.model.clone();
                     drom_bull.year = year.parse::<u32>().unwrap();
                 }
 
@@ -131,14 +143,7 @@ impl DromClient {
 
                 for complectation_candidate in complectation_candidates {
                     let html = complectation_candidate.inner_html().clone();
-                    // let mut data_vec: Vec<&str> = html.split(" ").collect();
 
-                    // if data_vec.len() > 2 {
-                    //     data_vec.remove(0);
-                    //     data_vec.remove(0);
-                    // }
-                    
-                    // let complectation = data_vec.join(" ");
                     let complectation = html;
                     drom_bull.complectation = complectation;
 
@@ -265,20 +270,30 @@ impl DromClient {
 
                 // если в базе есть эта машина по той же цене, то не сохраняем
                 let existed =
-                    DromBullRepository::get_identical(&drom_bull.external_id, drom_bull.price);
+                    DromBullRepository::get_identical(&drom_bull.external_id, drom_bull.price, &drom_bull.system);
 
                 if existed.id == 0 {
                     DromBullRepository::save(&mut drom_bull);
                 }
             }
+
+            if !next_page {
+                // все страницы загружены
+                progress.is_loaded = true
+            }
+
+            //запись успешной попытки
+            ProgressRepository::upsert(&mut progress);
         }
 
         info!(
-            "Конец загрузки {:?} {:?}. Страниц загружено {:?}",
+            "[drom] Конец загрузки {:?} {:?}. Страниц загружено {:?}",
             &request.firm,
             &request.model,
             &current_page - 1
         );
+
+        ContextRepository::set_next_round_drom(true);
 
         Ok(())
     }
@@ -286,7 +301,7 @@ impl DromClient {
 
 #[async_trait]
 impl PeeperClient for DromClient {
-    async fn search(&mut self, request: &UserRequest) {
-        let _ = self.async_search(request).await;
+    async fn search(&mut self, request: &UserRequest, start_page: &u32) {
+        let _ = self.async_search(request, start_page).await;
     }
 }

@@ -15,8 +15,8 @@ impl DromBullRepository {
     pub fn save(drom_bull: &mut DromBull) {
         let conn = sqlite_connection_factory::get();
 
-        let mut stmt = conn.prepare("INSERT INTO drom_bulls (external_id, firm, model, year, complectation, motor_volume, motor_power, fuel, kpp, privod, probeg, price, location, date, created_at) 
-        VALUES (:external_id, :firm, :model, :year, :complectation, :motor_volume, :motor_power, :fuel, :kpp, :privod, :probeg, :price, :location, :date, :created_at)").unwrap();
+        let mut stmt = conn.prepare("INSERT INTO cars (external_id, firm, model, year, complectation, motor_volume, motor_power, fuel, kpp, privod, probeg, price, location, date, created_at, system, exclusive) 
+        VALUES (:external_id, :firm, :model, :year, :complectation, :motor_volume, :motor_power, :fuel, :kpp, :privod, :probeg, :price, :location, :date, :created_at, :system, :exclusive)").unwrap();
         let local: DateTime<Local> = Local::now();
 
         match stmt.execute(named_params! {
@@ -33,8 +33,12 @@ impl DromBullRepository {
             ":probeg": drom_bull.probeg,
             ":price": drom_bull.price,
             ":location": drom_bull.location,
+
             ":date": local.format("%Y-%d-%m").to_string(),
             ":created_at": local.format("%Y-%m-%d %H:%M:%S").to_string(),
+
+            ":system": drom_bull.system,
+            ":exclusive": drom_bull.exclusive,
         }) {
             Ok(_) => {
                 info!("saved {:?}", drom_bull.external_id);
@@ -44,14 +48,15 @@ impl DromBullRepository {
         };
     }
 
-    pub fn get_identical(external_id: &str, price: u32) -> DromBull {
+    pub fn get_identical(external_id: &str, price: u32, system: &str) -> DromBull {
         let conn = sqlite_connection_factory::get();
 
-        let mut stmt = conn.prepare("SELECT * FROM drom_bulls WHERE external_id = :external_id and price = :price limit 1").unwrap();
+        let mut stmt = conn.prepare("SELECT * FROM cars WHERE system = :system and external_id = :external_id and price = :price limit 1").unwrap();
 
         let iter = stmt
             .query_map(
                 named_params! {
+                    ":system": system,
                     ":external_id": external_id,
                     ":price": price,
                 },
@@ -71,8 +76,12 @@ impl DromBullRepository {
                         probeg: row.get(11)?,
                         price: row.get(12)?,
                         location: row.get(13)?,
+
                         date: row.get(14)?,
                         created_at: row.get(15)?,
+                        
+                        system: row.get(16)?,
+                        exclusive: row.get(17)?,
                     })
                 },
             )

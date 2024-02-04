@@ -1,7 +1,5 @@
-// машина на дроме
-// TODO переименовать
 #[derive(Default, Debug)]
-pub struct DromBull {
+pub struct Car {
     pub id: u64,
     pub external_id: String,
     pub firm: String,
@@ -19,12 +17,14 @@ pub struct DromBull {
 
     pub system: String,
     pub exclusive: bool,
+    pub new: bool,
+    pub link: String,
 
     pub date: String,
     pub created_at: String,
 }
 
-impl DromBull {
+impl Car {
     pub fn new() -> Self {
         Self {
             id: 0,
@@ -44,6 +44,8 @@ impl DromBull {
 
             system: "".to_string(),
             exclusive: false,
+            new: false,
+            link: "".to_string(),
 
             date: "".to_string(),
             created_at : "".to_string(),

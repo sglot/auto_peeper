@@ -1,10 +1,10 @@
-use self::{drom_client::DromClient, peer_client_enum::PeeperClientType, avito_client::AvitoClient};
+use self::{drom_client::DromClient, peeper_client_enum::PeeperClientType, avito_client::AvitoClient};
 use super::models::user_request::UserRequest;
 use async_trait::async_trait;
 
 pub mod drom_client;
 pub mod avito_client;
-pub mod peer_client_enum;
+pub mod peeper_client_enum;
 
 
 pub fn get_client(client_type: PeeperClientType) -> Box<dyn PeeperClient> {

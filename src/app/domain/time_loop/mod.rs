@@ -24,7 +24,7 @@ pub async fn do_loop() {
 
         // запасная проверка на перехлёст таймаута основного и в работе какого-нибудь из клиентов
         if !ContextRepository::next_round() {
-            info!("\n lock wait next_round \n");
+            info!("\n lock wait next_round 1\n");
             sleep(Duration::from_secs(1));
             continue;
         }
@@ -35,7 +35,7 @@ pub async fn do_loop() {
 
         // запасная проверка на перехлёст таймаута основного и в работе какого-нибудь из клиентов
         if !ContextRepository::next_round() {
-            info!("\n lock wait next_round \n");
+            info!("\n lock wait next_round 2\n");
             sleep(Duration::from_secs(1));
             continue;
         }

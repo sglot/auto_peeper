@@ -67,3 +67,10 @@ firm = "kia"
 model = "k5"
 avito_model_hash = "ASgBAgICAkTgtg3KmCjitg26qCg"
 avito_filter_hash = "ASgBAgECA0Tgtg3KmCjitg26qCj68A_ou_cCAUX6jBQXeyJmcm9tIjoyMDE3LCJ0byI6bnVsbH0"
+
+[[requests]]
+id = 11
+firm = "volkswagen"
+model = "polo"
+avito_model_hash = "ASgBAgICAkTgtg24mSjitg2IrSg"
+avito_filter_hash = "ASgBAgECA0Tgtg24mSjitg2IrSjwtg3stygCRb4VGHsiZnJvbSI6bnVsbCwidG8iOjE1NTM1ffqMFBd7ImZyb20iOjIwMjAsInRvIjpudWxsfQ"

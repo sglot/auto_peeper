@@ -10,6 +10,9 @@
 # Сборка приложения
 Build command `cargo rustc --release --package auto_peeper -- -Clink-args="/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"`
 
+SELECT date, model, avg(price), min(price), max(price) FROM "cars" GROUP BY date, model
+ORDER BY date DESC;
+
 
 # Формат запросов
 [[requests]]

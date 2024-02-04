@@ -1,0 +1,2 @@
+pub mod report_avg_price_by_model;
+pub mod report_avg_price_by_model_repository;

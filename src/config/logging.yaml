@@ -3,13 +3,45 @@ appenders:
     kind: console
     encoder:
       pattern: "{h({d(%Y-%m-%d %H:%M:%S)(utc)} - {l}: {m}{n})}"
-  file:
-    kind: file
-    path: "src/storage/logs/logs.log"
+  file_base:
+    kind: rolling_file
+    append: true
+    path: "storage/logs/logs.log"
     encoder:
       pattern: "{d(%Y-%m-%d %H:%M:%S)(utc)} - {h({l})}: {m}{n}"
+    policy:
+      kind: compound
+      trigger:
+        kind: size
+        limit: 10mb
+      roller:
+        kind: fixed_window
+        base: 1
+        count: 100
+        pattern: "storage/logs/logs{}.log"
+  file_errors:
+    kind: rolling_file
+    append: true
+    path: "storage/logs/errors.log"
+    encoder:
+      pattern: "{d(%Y-%m-%d %H:%M:%S)(utc)} - {h({l})}: {m}{n}"
+    policy:
+      kind: compound
+      trigger:
+        kind: size
+        limit: 10mb
+      roller:
+        kind: fixed_window
+        base: 1
+        count: 100
+        pattern: "storage/logs/errors{}.log"
 root:
   level: info
   appenders:
     - stdout
-    - file
+    - file_base
+loggers:
+  app::errors:
+    level: info
+    appenders:
+      - file_errors

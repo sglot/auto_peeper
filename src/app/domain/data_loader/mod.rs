@@ -4,7 +4,7 @@ use crate::{
     app::domain::{
         clients::{
             get_client,
-            peer_client_enum::{PeeperClientType, PeeperClientTypeData},
+            peeper_client_enum::{PeeperClientType, PeeperClientTypeData},
         },
         models::progress::Progress,
         support, user_request_mapper,
@@ -43,10 +43,12 @@ pub async fn load() {
     // println!("Found req {:?}", user_request);
 
     if enable_drom {
+        println!("load drom");
         load_drom(progress_map.clone(), request_bundle.clone());
     }
 
     if enable_avito {
+        println!("load avito");
         load_avito(progress_map, request_bundle).await;
     }
 }

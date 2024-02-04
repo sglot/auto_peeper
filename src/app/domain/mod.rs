@@ -4,4 +4,5 @@ pub mod data_loader;
 pub mod clients;
 pub mod user_request_mapper;
 pub mod support;
-
+pub mod bot;
+pub mod queue;

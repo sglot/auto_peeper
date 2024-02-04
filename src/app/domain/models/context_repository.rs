@@ -23,7 +23,18 @@ impl ContextRepository {
 
     pub fn next_round() -> bool {
         let lock = CONTEXT.lock().unwrap();
-        return lock.next_round_drom && lock.next_round_avito;
+
+        let mut drom = true;
+        if lock.enable_drom {
+            drom = lock.next_round_drom;
+        }
+
+        let mut avito = true;
+        if lock.enable_avito {
+            avito = lock.next_round_avito;
+        }
+
+        return drom && avito;
     }
 
     pub fn set_next_round_drom(value: bool) {

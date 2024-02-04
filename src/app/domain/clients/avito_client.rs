@@ -1,12 +1,12 @@
 use std::{ time::{Instant, Duration}, thread::sleep};
 
-use log::info;
+use log::{info, error};
 use reqwest::Client;
 
 use super::PeeperClient;
 use crate::{app::domain::{models::{
-        drom_bull::DromBull, drom_bull_repository::DromBullRepository, user_request::UserRequest, progress::Progress, progress_repository::ProgressRepository, context_repository::ContextRepository,
-    }, user_request_mapper}, REQUEST_CONFIG};
+        car::Car, car_repository::CarRepository, user_request::UserRequest, progress::Progress, progress_repository::ProgressRepository, context_repository::ContextRepository, notification_member_repository::NotificationMemberRepository,
+    }, user_request_mapper, queue::actions::upsert_cars_queue_action::upsert_cars_queue}, REQUEST_CONFIG};
 use async_trait::async_trait;
 
 use scraper::{Html, Selector};
@@ -28,6 +28,7 @@ impl AvitoClient {
 
     fn get_url(&mut self, request: &UserRequest, page: u32) -> reqwest::Url {
         let mut url = self.base_uri.clone();
+        url.push_str("all/avtomobili/");
         url.push_str(&request.firm);
         url.push_str("/");
         url.push_str(&request.model);
@@ -100,7 +101,8 @@ impl AvitoClient {
                     None => "",
                 };
                 if captcha_div_class.eq("firewall-container") {
-                    info!("### ### ###\n ### ### Капча ### ### \n ### ### ###");
+                    error!(target: "app::errors","капча url {:?}", url_p.clone().to_string());
+                    info!("\n### ### ### ### ###\n ### ### Капча ### ### \n ### ### ### ### ###");
 
                     continue 'page_loop;
                 }
@@ -109,12 +111,12 @@ impl AvitoClient {
                     continue 'car_loop;
                 }
 
-                let mut drom_bull = DromBull::new();
-                drom_bull.system = self.system_type.clone();
+                let mut car = Car::new();
+                car.system = self.system_type.clone();
 
                 let id: &str = candidate.attr("id").unwrap();
 
-                drom_bull.external_id = id.to_string();
+                car.external_id = id.to_string();
 
                 // название, модель, год
                 let title_selector = Selector::parse("h3").unwrap();
@@ -150,9 +152,13 @@ impl AvitoClient {
 
                     // print!(" 1{:?} 2{:?} 3{:?}", firm, model, year);
 
-                    drom_bull.firm = firm.to_string();
-                    drom_bull.model = user_request_mapper::model_from_avito(&request.model); // приводится к единому названию
-                    drom_bull.year = year.parse::<u32>().unwrap_or(0);
+                    car.firm = firm.to_string();
+                    car.model = user_request_mapper::model_from_avito(&request.model); // приводится к единому названию
+                    car.year = year.parse::<u32>().unwrap_or(0);
+
+                    car.link = self.base_uri.clone();
+                    car.link.push_str(title_candidate.parent().unwrap().value().as_element().unwrap().attr("href").unwrap());
+                    
                 }
 
                 // детали
@@ -183,7 +189,7 @@ impl AvitoClient {
                         info!(
                             "пропуск, неполная информация, {:?}, {:?}",
                             url_p.as_str(),
-                            drom_bull.external_id
+                            car.external_id
                         );
                         continue;
                     }
@@ -194,7 +200,7 @@ impl AvitoClient {
                         info!(
                             "пропуск, неполная информация по объёму, коробке, силам, {:?}, {:?}",
                             url_p.as_str(),
-                            drom_bull.external_id
+                            car.external_id
                         );
                         continue;
                     }
@@ -221,13 +227,13 @@ impl AvitoClient {
 
                     let fuel = detail_inner_vec[4];
 
-                    drom_bull.motor_volume =
+                    car.motor_volume =
                         (motor_volume.parse::<f32>().unwrap_or(0.0) * 10.0).round() / 10.0;
-                    drom_bull.motor_power = motor_power.parse::<u32>().unwrap_or(0);
-                    drom_bull.fuel = fuel.to_string();
-                    drom_bull.kpp = kpp.to_string();
-                    drom_bull.privod = privod.to_string();
-                    drom_bull.probeg = probeg.parse::<u32>().unwrap_or(0);
+                    car.motor_power = motor_power.parse::<u32>().unwrap_or(0);
+                    car.fuel = fuel.to_string();
+                    car.kpp = kpp.to_string();
+                    car.privod = privod.to_string();
+                    car.probeg = probeg.parse::<u32>().unwrap_or(0);
 
                     print!(" motor_volume {:?} motor_power {:?} fuel {:?} kpp {:?} privod {:?} probeg {:?}\n", motor_volume, motor_power, fuel, kpp, privod, probeg);
                 }
@@ -249,7 +255,7 @@ impl AvitoClient {
 
                     let price = price_candidate.attr("content").unwrap();
 
-                    drom_bull.price = price.parse::<u32>().unwrap_or(0);
+                    car.price = price.parse::<u32>().unwrap_or(0);
                 }
 
                 // город
@@ -261,19 +267,40 @@ impl AvitoClient {
 
                     let html = location_candidate.inner_html().clone();
                     let location = html.trim();
-                    drom_bull.location = location.to_string();
+                    car.location = location.to_string();
                 }
 
+                // только на авито, новый
+                let attr_selector = Selector::parse("span").unwrap();
+                let attr_candidates = candidate.select(&attr_selector);
+
+                for attr_candidate in attr_candidates {
+                    let text = attr_candidate.inner_html().clone();
+                    
+                    if text.eq("Только на Авито") {
+                        car.exclusive = true;
+                        continue;
+                    }
+
+                    if text.eq("Новый") {
+                        car.new = true;
+                        continue;
+                    }
+                }
+
+                ///////////////////////
+
                 // если в базе есть эта машина по той же цене, то не сохраняем
-                let existed = DromBullRepository::get_identical(
-                    &drom_bull.external_id,
-                    drom_bull.price,
-                    &drom_bull.system,
+                let existed = CarRepository::get_identical(
+                    &car.external_id,
+                    car.price,
+                    &car.system,
                 );
 
                 if existed.id == 0 {
-                    print!("[avito] want to save {:?} ", drom_bull);
-                    DromBullRepository::save(&mut drom_bull);
+                    print!("[avito] want to save {:?} ", car);
+                    let id = CarRepository::save(&mut car);
+                    upsert_cars_queue(id, car.price);
                 }
             }
 

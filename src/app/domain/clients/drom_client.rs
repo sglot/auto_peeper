@@ -1,9 +1,9 @@
-use log::info;
+use log::{info, error};
 
 use super::PeeperClient;
-use crate::app::domain::models::{
-    drom_bull::DromBull, drom_bull_repository::DromBullRepository, user_request::UserRequest, progress::Progress, progress_repository::ProgressRepository, context_repository::ContextRepository,
-};
+use crate::app::domain::{models::{
+    car::Car, car_repository::CarRepository, user_request::UserRequest, progress::Progress, progress_repository::ProgressRepository, context_repository::ContextRepository,
+}, queue::actions::upsert_cars_queue_action::upsert_cars_queue};
 use async_trait::async_trait;
 
 use scraper::{ElementRef, Html, Selector};
@@ -98,15 +98,16 @@ impl DromClient {
                     continue;
                 }
 
-                let mut drom_bull = DromBull::new();
+                let mut car = Car::new();
                 
-                drom_bull.system = self.system_type.clone();
+                car.system = self.system_type.clone();
 
                 let href = candidate.attr("href").unwrap();
                 let href_vec: Vec<&str> = href.split("/").collect();
                 let href_end: Vec<&str> = href_vec.last().unwrap().split(".").collect();
 
-                drom_bull.external_id = href_end[0].to_string();
+                car.link = href.to_string();
+                car.external_id = href_end[0].to_string();
 
                 // название, модель, год
                 let title_selector = Selector::parse("span").unwrap();
@@ -132,9 +133,9 @@ impl DromClient {
 
                     print!(" 1{:?} 2{:?} 3{:?}", firm, model, year);
 
-                    drom_bull.firm = firm.to_string();
-                    drom_bull.model = request.model.clone();
-                    drom_bull.year = year.parse::<u32>().unwrap();
+                    car.firm = firm.to_string();
+                    car.model = request.model.clone();
+                    car.year = year.parse::<u32>().unwrap();
                 }
 
                 // комплектация
@@ -145,9 +146,9 @@ impl DromClient {
                     let html = complectation_candidate.inner_html().clone();
 
                     let complectation = html;
-                    drom_bull.complectation = complectation;
+                    car.complectation = complectation;
 
-                    print!(" complectation {:?} \n", drom_bull.complectation);
+                    print!(" complectation {:?} \n", car.complectation);
                 }
 
                 // детали
@@ -179,7 +180,7 @@ impl DromClient {
 
                     // пропуск, неполная информация
                     if detail_inner_vec.len() < 5 {
-                        info!("пропуск, неполная информация, {:?}, {:?}", url_p.as_str(), drom_bull.external_id);
+                        info!("пропуск, неполная информация, {:?}, {:?}", url_p.as_str(), car.external_id);
                         continue;
                     }
 
@@ -213,12 +214,12 @@ impl DromClient {
                         probeg = detail_inner_vec[4].replace(" ", "").replace("км", "");
                     }
 
-                    drom_bull.motor_volume = (motor_volume.parse::<f32>().unwrap_or(0.0) * 10.0).round() / 10.0;
-                    drom_bull.motor_power = motor_power.parse::<u32>().unwrap_or(0);
-                    drom_bull.fuel = fuel.to_string();
-                    drom_bull.kpp = kpp.to_string();
-                    drom_bull.privod = privod.to_string();
-                    drom_bull.probeg = probeg.parse::<u32>().unwrap_or(0);
+                    car.motor_volume = (motor_volume.parse::<f32>().unwrap_or(0.0) * 10.0).round() / 10.0;
+                    car.motor_power = motor_power.parse::<u32>().unwrap_or(0);
+                    car.fuel = fuel.to_string();
+                    car.kpp = kpp.to_string();
+                    car.privod = privod.to_string();
+                    car.probeg = probeg.parse::<u32>().unwrap_or(0);
 
                     print!(" motor_volume {:?} motor_power {:?} fuel {:?} kpp {:?} privod {:?} probeg {:?}\n", motor_volume, motor_power, fuel, kpp, privod, probeg);
                 }
@@ -241,7 +242,7 @@ impl DromClient {
                     let html = price_candidate.inner_html().clone();
                     let price = html.trim().replace("&nbsp;", "").replace("<!-- -->", "");
 
-                    drom_bull.price = price.parse::<u32>().unwrap();
+                    car.price = price.parse::<u32>().unwrap();
 
                     // print!(" price{:?} ", price);
                 }
@@ -263,17 +264,33 @@ impl DromClient {
 
                     let html = location_candidate.inner_html().clone();
                     let location = html.trim();
-                    drom_bull.location = location.to_string();
+                    car.location = location.to_string();
 
                     // print!(" location{:?} ", location);
                 }
 
+                // // только на дроме, новый
+                let attr_selector = Selector::parse("div").unwrap();
+                let attr_candidates = candidate.select(&attr_selector);
+
+                for attr_candidate in attr_candidates {
+                    let text = attr_candidate.inner_html().clone();
+
+                    if text.eq("новый") {
+                        car.new = true;
+                        continue;
+                    }
+                }
+
+                /////////////////////////
+
                 // если в базе есть эта машина по той же цене, то не сохраняем
                 let existed =
-                    DromBullRepository::get_identical(&drom_bull.external_id, drom_bull.price, &drom_bull.system);
+                    CarRepository::get_identical(&car.external_id, car.price, &car.system);
 
                 if existed.id == 0 {
-                    DromBullRepository::save(&mut drom_bull);
+                    let id = CarRepository::save(&mut car);
+                    upsert_cars_queue(id, car.price);
                 }
             }
 
